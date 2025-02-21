@@ -1,0 +1,112 @@
+---
+title: "Reproducible Research - Project 1"
+author: "Guynemer Cétoute"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+This doocument is to show the acquired skills from the course Reproducible Research
+from the R Data Science hosted by Johns Hopkins University from Coursera.
+
+## The steps to load the Data
+
+```{r loading, echo = TRUE}
+library(tidyverse)
+activity <- read_csv("Downloads/repdata_data_activity/activity.csv")
+View(activity)
+```
+
+## Question 1: Calculate the total number of steps taken per day
+
+Before showing the total number of steps per day, let us create a new column to assign the name of the day.
+```{r days, echo = TRUE}
+activity$days <- wday(activity$date, label = T)
+```
+
+```{r NumberPerDay, echo = TRUE}
+activity %>% filter(!is.na(steps)) %>% group_by(days) %>% summarise(Total = sum(steps))
+```
+
+## Question 2: Histogram of the total number of steps taken each day
+
+```{r histogram_1, echo = TRUE}
+ggplot(activity %>% filter(!is.na(steps)), aes(x = steps)) +
+    geom_histogram(binwidth = 100, fill = "skyblue", color = "black", alpha = 0.7) +
+    facet_wrap(~ days) + labs(title = "Histogram of Steps per Day by Day of the Week",
+         x = "Number of Steps", y = "Frequency") + theme_minimal()
+```
+## Question 3: Mean and median number of steps taken each day
+
+### To show the number of NA in the column steps
+```{r NA_count, echo = TRUE}
+activity %>% filter(is.na(steps)) %>% nrow()
+```
+
+### The Means number of steps per day
+
+```{r mean_1, echo = TRUE}
+activity %>% filter(!is.na(steps)) %>% group_by(days) %>% summarise(Average = mean(steps))
+
+```
+
+### The Median number of steps per day
+
+```{r median_1, echo = TRUE}
+activity %>% filter(!is.na(steps)) %>% group_by(days) %>% summarise(Median = median(steps))
+```
+
+## Question 4: Time series plot of the average number of steps taken
+
+```{r plot_time_series, echo = TRUE}
+activity %>% filter(!is.na(steps)) %>% group_by(date) %>% 
+    summarise(avg_steps = mean(steps)) %>%
+    ggplot(aes(x = date, y = avg_steps)) + geom_line(color = "blue") +
+    labs(title = "Average Steps per Day", x = "Date", y = "Average Steps") +
+    theme_minimal() + theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+## Question 5: Code to describe and show a strategy for imputing missing data
+
+Here, I impute the missing data in the steps column by the mean of the column.
+
+```{r impute, echo = TRUE}
+activity_2 <- activity %>% mutate(steps = ifelse(is.na(steps),
+                                                 mean(steps, na.rm = T), steps))
+```
+
+## Question 6: Histogram of the total number of steps taken each day after missing values are imputed
+
+```{r histogram_2, echo = TRUE}
+ggplot(activity_2, aes(x = steps)) +
+     geom_histogram(binwidth = 100, fill = "skyblue", color = "black", alpha = 0.7) +
+     facet_wrap(~ days) +
+     labs(title = "Histogram of Steps per Day by Day of the Week \nAfter imputing the missing value in the steps column", x = "Number of Steps", y = "Frequency") +
+    theme_minimal()
+```
+
+## Question 7: Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+
+Before plotting the the graph comparing weekdays with weekends, I have to create another column to separate the weekdays from the weekends.
+
+```{r transform, echo = TRUE}
+activity_2$daysType <- case_when(activity_2$days %in%
+                                     c('Mon', 'Tue', 'Wed', 'Thu', 'Fri') ~ 'weekday',
+                                 activity_2$days %in% c('Sat', 'Sun') ~ 'weekend')
+```
+
+Now, this is the plot.
+
+```{r final_plot, echo = TRUE}
+activity_summary <- activity_2 %>%
+     group_by(interval, daysType) %>%
+     summarise(avg_steps = mean(steps, na.rm = TRUE))
+
+ggplot(activity_summary, aes(x = interval, y = avg_steps)) +
+     geom_line() +
+     facet_wrap(~ daysType, ncol = 1) +
+     labs(title = "Average Steps per 5-Minute Interval (Weekdays vs Weekends)",
+                       x = "5-Minute Interval", y = "Average Number of Steps") +
+     theme_minimal() +
+     theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
